@@ -981,6 +981,23 @@ input[type="time"], select, input[type="text"] {
         /* ==================================
            ESTILOS MODAL DE CONFIRMACIÓN
         =================================== */
+
+        #modalConfirmacion.modal-overlay {
+            display: flex !important;
+            justify-content: center;
+            align-items: center;
+
+            visibility: hidden;
+            opacity: 0;
+
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+
+        #modalConfirmacion.modal-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
         .modal-content-confirm {
             background: #fff;
             width: 90%;
@@ -992,9 +1009,10 @@ input[type="time"], select, input[type="text"] {
             position: relative;
             transform: scale(0.9);
             opacity: 0;
-            transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
         }
-        .modal-overlay[style*="display: flex"] .modal-content-confirm {
+
+        #modalConfirmacion.modal-overlay.show .modal-content-confirm {
             transform: scale(1);
             opacity: 1;
         }

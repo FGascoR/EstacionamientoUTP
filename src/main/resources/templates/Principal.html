@@ -625,12 +625,9 @@
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                // alert("Reserva guardada correctamente"); // <-- REEMPLAZADO
-                document.getElementById("modalConfirmacion").style.display = "flex"; // <-- NUEVO
-
+                document.getElementById("modalConfirmacion").classList.add("show");
                 document.getElementById("modalFormularioReserva").style.display = "none";
 
-                // ... (El resto de tu código de éxito) ...
                 const espacioEl = document.querySelector(`.espacio[data-id='${data.espacioId}']`);
                 if (espacioEl) {
                     espacioEl.classList.remove("libre");
@@ -816,10 +813,9 @@
 
 
     /* ===========================
-       SCRIPT DEL LOADER (CORREGIDO - NO DUPLICADO)
+       SCRIPT DEL LOADER (CORREGIDO
     =========================== */
     window.addEventListener('load', () => {
-        // Ahora SÍ encontrará 'main-content' porque corregiste el HTML
         const loader = document.getElementById('loader-container');
         const content = document.getElementById('main-content');
 
@@ -833,13 +829,12 @@
                 content.style.opacity = '1';
             }
 
-            // Quitar el loader del DOM después de la transición
             setTimeout(() => {
                 if (loader) {
                     loader.style.display = 'none';
                 }
-            }, 500); // 500ms coincide con la transición
-        }, 200); // 200ms de retraso
+            }, 500);
+        }, 200);
     });
 
 
@@ -851,10 +846,9 @@
     const btnAceptarConfirm = document.getElementById("btnAceptarConfirmacion");
 
     function cerrarModalExito() {
-        modalConfirm.style.display = "none";
+        modalConfirm.classList.remove("show");
     }
 
-    // Comprobamos que los elementos existan antes de añadir listeners
     if (btnCerrarConfirm) {
         btnCerrarConfirm.addEventListener("click", cerrarModalExito);
     }
