@@ -1,0 +1,196 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+body {
+    background-color: #f3f8fb;
+}
+
+.login-container {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+}
+
+/* Lado izquierdo (imagen) */
+.image-section {
+    flex: 1;
+    background-color: #eef8fb;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.image-section img {
+    width: 80%;
+    max-width: 480px;
+}
+
+/* Lado derecho (formulario) */
+.form-section {
+    flex: 1.1;
+    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.form-content {
+    width: 420px; /* más ancho */
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.logo-utp {
+    width: 120px;
+    margin-bottom: 30px;
+    align-self: flex-start;
+}
+
+.form-content h2 {
+    font-size: 28px;
+    color: #000;
+    margin-bottom: 10px;
+    align-self: flex-start;
+}
+
+.form-content p {
+    margin-bottom: 35px;
+    color: #555;
+    align-self: flex-start;
+    font-size: 15px;
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 6px;
+    color: #222;
+}
+
+.input-container {
+    width: 100%;
+    margin-bottom: 18px;
+}
+
+input {
+    width: 100%;
+    padding: 13px 14px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    outline: none;
+    font-size: 14px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+input:focus {
+    border-color: #6d48ff;
+    box-shadow: 0 0 4px rgba(109, 72, 255, 0.3);
+}
+
+.input-container:hover input {
+    border-color: #6d48ff;
+    box-shadow: 0 0 4px rgba(109, 72, 255, 0.3);
+}
+
+.example {
+    font-size: 12.5px;
+    color: gray;
+    margin-bottom: 25px;
+    display: block;
+}
+
+.forgot-password {
+    display: block;
+    text-align: right;
+    font-size: 13.5px;
+    color: #6d48ff;
+    margin-bottom: 25px;
+    text-decoration: none;
+}
+
+.forgot-password:hover {
+    text-decoration: underline;
+}
+
+.btn-login {
+    width: 100%;
+    padding: 13px;
+    background-color: #dfe3e9;
+    border: none;
+    border-radius: 8px;
+    color: #777;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-login:hover {
+    background-color: #6d48ff;
+    color: white;
+}
+
+.error-message {
+    margin-top: 15px;
+    color: #ff3b3b;
+    font-weight: 500;
+    text-align: center;
+}
+.input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-container .icon {
+    position: absolute;
+    left: 10px;
+    color: #888;
+    font-size: 1rem;
+}
+
+.input-container input {
+    width: 100%;
+    padding: 10px 40px 10px 35px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    color: #666;
+    cursor: pointer;
+}
+
+.input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-container input {
+    width: 100%;
+    padding: 10px 40px 10px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.icon-right {
+    position: absolute;
+    right: 10px;
+    color: #666;
+    font-size: 22px;
+    cursor: pointer;
+    user-select: none;
+}
+

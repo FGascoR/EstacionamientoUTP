@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UTP Estacionamiento</title>
+    <link rel="icon" type="image/png" th:href="@{/img/img.png}">
+    <link rel="stylesheet" th:href="@{/css/stylesprincipal.css}">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+</head>
+<body>
+
+<!-- 1. PANTALLA DE CARGA -->
+<div id="loader-container">
+    <div class="loader-text">Cargando...</div>
+    <svg class="spinner" viewBox="0 0 50 50">
+        <circle class="path" cx="25" cy="25" r="20"></circle>
+    </svg>
+</div>
+
+<header class="header">
+    <div class="header-left">
+        <img th:src="@{/img/utp.png}" alt="Logo UTP" class="logo-utp">
+    </div>
+
+    <div class="header-right">
+        <span class="material-symbols-outlined help-icon">help</span>
+
+        <div class="user-info">
+            <span class="user-name">Hola, <span th:text="${usuario.nombre}"></span></span>
+            <span class="user-code" th:text="${usuario.usuario}"></span>
+        </div>
+
+        <div class="user-avatar"></div>
+
+        <div class="user-menu-container">
+            <div class="user-toggle">
+                <span id="arrowIcon" class="material-symbols-outlined" style="color:#555; cursor:pointer;">expand_more</span>
+            </div>
+
+            <div class="user-dropdown" id="userDropdown">
+                <a href="#">
+                    <span class="material-symbols-outlined">account_circle</span>
+                    Ver perfil
+                </a>
+                <a href="#" id="btnVehiculos">
+                    <span class="material-symbols-outlined">directions_car</span>
+                    Vehículos
+                </a>
+                <a href="#">
+                    <span class="material-symbols-outlined">lock</span>
+                    Cambiar contraseña
+                </a>
+                <form id="logoutForm" action="/logout" method="post" style="display:none;">
+                    <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+                </form>
+
+                <a href="#" onclick="document.getElementById('logoutForm').submit();">
+                    <span class="material-symbols-outlined">logout</span>
+                    Cerrar sesión
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div id="modalVehiculos" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+        <span id="cerrarModalVehiculos" class="material-symbols-outlined close-btn">close</span>
+        <h2 class="titulo-modal">Mis Vehículos</h2>
+
+        <table class="vehiculos-table">
+            <thead>
+            <tr>
+                <th>Tipo</th>
+                <th>Placa</th>
+                <th>Acciones</th>
+            </tr>
+            </thead>
+            <tbody id="vehiculosTableBody"></tbody>
+        </table>
+
+        <h3 class="titulo-modal">Agregar Vehículo</h3>
+        <div class="form-grid" style="margin-top:10px;">
+            <select id="nuevoTipoVehiculo">
+                <option value="">Seleccione tipo</option>
+                <option th:each="tipo : ${tiposVehiculo}" th:value="${tipo.id}" th:text="${tipo.nombre}"></option>
+            </select>
+            <input type="text" id="nuevaPlaca" placeholder="Placa" />
+            <button id="btnAgregarVehiculo" class="btn-reservar">Agregar</button>
+        </div>
+    </div>
+</div>
+
+
+<div id="menuOverlay" class="menu-overlay"></div>
+
+<nav class="sidebar">
+    <div class="menu-top-button">
+        <span class="material-symbols-outlined">menu</span>
+    </div>
+
+    <ul class="nav-menu">
+        <li class="nav-item" id="btnEstacionamiento">
+            <a href="#">
+                <span class="material-symbols-outlined">home</span>
+                Estacionamiento
+            </a>
+        </li>
+
+        <li class="nav-item" id="btnReservaciones">
+            <a href="#">
+                <span class="material-symbols-outlined">directions_car</span>
+                Reservaciones
+            </a>
+        </li>
+    </ul>
+</nav>
+
+
+<main class="main-content">
+
+    <section id="vistaEstacionamiento">
+        <h1>Estacionamiento</h1>
+        <hr>
+
+        <div class="dashboard-container">
+            <div class="map-card">
+                <h3>Mapa Completo:</h3>
+                <img th:src="@{/img/MapaCompleto.png}" alt="MapaCompleto">
+            </div>
+
+            <div class="sector-maps-column">
+                <div class="map-card">
+                    <h3>Sector: A</h3>
+                    <img th:src="@{/img/SectorA.png}" alt="Sector A">
+                </div>
+
+                <div class="map-card">
+                    <h3>Sector: B</h3>
+                    <img th:src="@{/img/SectorB.png}" alt="Sector B">
+                </div>
+
+                <div class="map-card">
+                    <h3>Sector: C</h3>
+                    <img th:src="@{/img/SectorC.png}" alt="Sector C">
+                </div>
+            </div>
+
+            <div class="status-area">
+                <h4>Espacios Generales</h4>
+                <div class="status-box disponible">
+                    <div class="icon-box">
+                        <span class="material-symbols-outlined">event_available</span>
+                    </div>
+                    <span class="text">Espacios disponibles:</span>
+                    <span class="count" th:text="${disponibles}">0</span>
+                </div>
+
+                <div class="status-box ocupado">
+                    <div class="icon-box">
+                        <span class="material-symbols-outlined">event_busy</span>
+                    </div>
+                    <span class="text">Espacios ocupados:</span>
+                    <span class="count" th:text="${ocupados}"></span>
+                </div>
+
+                <div th:each="sector : ${sectores}" class="sector-box">
+                    <h4 th:text="'Sector ' + ${sector.nombre}" th:attr="data-id=${sector.id}"></h4>
+                    <div class="sector-status">
+                        <div class="status-box">
+                            <div class="icon-box">
+                                <span class="material-symbols-outlined">event_available</span>
+                            </div>
+                            <span class="text">Libres:</span>
+                            <span class="count" th:text="${sector.espaciosDisponibles}">0</span>
+                        </div>
+
+                        <div class="status-box">
+                            <div class="icon-box">
+                                <span class="material-symbols-outlined">event_busy</span>
+                            </div>
+                            <span class="text">Ocupados:</span>
+                            <span class="count" th:text="${sector.espaciosOcupados}">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <section id="vistaReservaciones" style="display:none;">
+        <h1>Reservaciones</h1>
+        <p style="margin-top:-2px; color:#555;">Gestiona fácilmente tu acceso al estacionamiento</p>
+
+        <div style="display:flex; gap:20px; margin-bottom:20px;">
+            <div class="status-box" style="flex:1;">
+                <div class="icon-box">
+                    <span class="material-symbols-outlined">event_available</span>
+                </div>
+                <span class="text">Espacios disponibles:</span>
+                <span class="count" th:text="${disponibles}"></span>
+            </div>
+            <div class="status-box" style="flex:1;">
+                <div class="icon-box">
+                    <span class="material-symbols-outlined">event_busy</span>
+                </div>
+                <span class="text">Espacios ocupados:</span>
+                <span class="count" th:text="${ocupados}"></span>
+            </div>
+        </div>
+
+        <hr style="margin-bottom: 10px;">
+
+
+        <div th:if="${reservaActiva == null}" id="empty-state-container" style="text-align:center; padding: 2rem 0;">
+            <img th:src="@{/img/SinReserva.png}" alt="Auto" style="width:160px; opacity:0.85; margin-bottom: 1rem;">
+            <p style="margin-top:20px; font-size:16px; color:#666;">
+                Aún no tienes ninguna reserva
+            </p>
+        </div>
+
+        <div th:if="${reservaActiva != null}" class="blue-section" id="blue-section-container">
+            <div class="content-container">
+                <div id="active-reservation-container">
+
+                    <div class="reserva-activa-card">
+                        <div class="reserva-info">
+
+                            <div class="reserva-fechas">
+                                <div class="info-item">
+                                    <span class="material-symbols-outlined">calendar_today</span>
+                                    <span>Fecha: <strong th:text="${#temporals.format(reservaActiva.fechaReserva, 'dd/MM/yyyy')}"></strong></span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="material-symbols-outlined">schedule</span>
+                                    <span>Entrada: <strong th:text="${#temporals.format(reservaActiva.horaEntrada, 'HH:mm')}"></strong></span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="material-symbols-outlined">schedule</span>
+                                    <span>Salida: <strong th:text="${#temporals.format(reservaActiva.horaSalida, 'HH:mm')}"></strong></span>
+                                </div>
+                            </div>
+
+                            <div class="reserva-lugar">
+                                <h6>Datos de Lugar:</h6>
+                                <p>Sector: <strong th:text="${reservaActiva.sector.nombre}"></strong></p>
+                                <p>Lugar: <strong th:text="${reservaActiva.espacio.nombre}"></strong></p>
+                                <div class="btn-container">
+                                    <button class="btn-detalles">Detalles</button>
+                                    <button class="btn-cancelar">Cancelar</button>
+                                </div>
+                            </div>
+
+                            <div class="reserva-acciones">
+                                <span class="status-chip">En Proceso</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div> </div> </div> <div class="reservar-button-container" style="text-align:center; margin-top: 30px;">
+        <button th:if="${reservaActiva == null}" id="btnAbrirReserva" class="btn-reservar-secondary">
+            Reservar
+        </button>
+        <button th:if="${reservaActiva != null}" id="btnAbrirReservaNueva" class="btn-reservar-secondary">
+            Reservar
+        </button>
+    </div>
+    </section>
+</main>
+
+<div id="modalTipoVehiculo" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+        <span id="cerrarModal" class="material-symbols-outlined close-btn">close</span>
+
+        <h2>Reservación:</h2>
+        <p style="margin-top:-10px;">Seleccione el tipo de vehículo:</p>
+
+        <div class="tipo-container">
+            <div th:each="tipo : ${tiposVehiculo}" class="tipo-card" th:attr="data-id=${tipo.id}">
+                <img th:src="@{'/img/iconos/' + ${tipo.nombre} + '.png'}">
+                <span th:text="${tipo.nombre}"></span>
+            </div>
+        </div>
+
+        <button class="btn-aceptar">Aceptar</button>
+    </div>
+</div>
+
+<div id="modalFormularioReserva" class="modal-overlay" style="display:none;">
+    <div class="modal-reserva">
+
+        <span id="cerrarModalReserva" class="material-symbols-outlined close-btn">close</span>
+
+        <h2 class="titulo-modal">
+            Reservación:
+            <img id="iconoVehiculo" src="" style="height:32px; vertical-align:middle;">
+        </h2>
+
+        <form id="formReserva" class="form-grid" th:action="@{/reservas/guardar}" method="post">
+            <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+            <div class="group">
+                <label>Seleccione el día:</label>
+                <div class="input-icon">
+                    <input type="date" name="fecha" required>
+                </div>
+            </div>
+
+            <div class="group">
+                <label>Ingrese la hora de llegada:</label>
+                <div class="fila-hora">
+                    <input type="time" name="entrada" required>
+                </div>
+            </div>
+
+            <div class="group">
+                <label>Ingrese la hora de salida:</label>
+                <div class="fila-hora">
+                    <input type="time" name="salida" required>
+                </div>
+            </div>
+
+            <div class="group">
+                <label>Sector:</label>
+                <select id="sectorSelect" name="sectorId" required>
+                    <option value="">Sector</option>
+                    <option th:each="s : ${sectores}" th:text="${s.nombre}" th:value="${s.id}"></option>
+                </select>
+            </div>
+
+            <div class="group">
+                <label>Tipo de Vehículo:</label>
+                <input type="text" id="tipoVehiculoNombre" readonly>
+            </div>
+
+            <div class="group">
+                <label for="placa">Placa del vehículo:</label>
+                <div class="input-icon">
+                    <input list="vehiculosUsuarioList" id="placa" name="placa" placeholder="Seleccione o ingrese una placa" required>
+                    <datalist id="vehiculosUsuarioList">
+                    </datalist>
+                </div>
+            </div>
+
+            <div class="group">
+                <label style="opacity:0;">.</label>
+                <button type="button" id="btnVerSectores" class="btn-ver">Ver Sectores</button>
+            </div>
+
+            <div class="group grupo-full">
+                <img id="sectorImgPreview" src="" style="width:100%; display:none; border-radius:8px; margin-bottom:15px;">
+            </div>
+
+            <div class="leyenda">
+                <span>Libre <div class="cuadro libre"></div></span>
+                <span>Ocupado <div class="cuadro ocupado"></div></span>
+            </div>
+
+            <div class="grupo-full" id="espaciosContainer">
+            </div>
+
+            <div class="grupo-full" style="text-align:right; margin-top:20px;">
+                <button id="btnGuardarReserva" type="submit" class="btn-reservar">
+                    Reservar
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<script>
+
+    /* ... TU JS (MENÚ, CAMBIO DE VISTAS, MODALES) ... */
+    /* ===========================
+       MENÚ USUARIO
+    =========================== */
+    const toggle = document.querySelector('.user-toggle');
+    const dropdown = document.getElementById('userDropdown');
+    const overlay = document.getElementById('menuOverlay');
+    const arrow = document.getElementById('arrowIcon');
+
+    toggle.addEventListener('click', () => {
+        const isOpen = dropdown.style.display === 'flex';
+        dropdown.style.display = isOpen ? 'none' : 'flex';
+        overlay.style.display = isOpen ? 'none' : 'block';
+        arrow.textContent = isOpen ? "expand_more" : "expand_less";
+    });
+
+    overlay.addEventListener('click', () => {
+        dropdown.style.display = 'none';
+        overlay.style.display = 'none';
+        arrow.textContent = "expand_more";
+    });
+
+
+
+    /* ===========================
+       CAMBIO DE VISTAS
+    =========================== */
+    const btnEst = document.getElementById("btnEstacionamiento");
+    const btnRes = document.getElementById("btnReservaciones");
+
+    const vistaEst = document.getElementById("vistaEstacionamiento");
+    const vistaRes = document.getElementById("vistaReservaciones");
+
+    btnEst.classList.add("active");
+
+    btnEst.addEventListener("click", () => {
+        vistaEst.style.display = "block";
+        vistaRes.style.display = "none";
+
+        btnEst.classList.add("active");
+        btnRes.classList.remove("active");
+    });
+
+    btnRes.addEventListener("click", () => {
+        vistaEst.style.display = "none";
+        vistaRes.style.display = "block";
+
+        btnRes.classList.add("active");
+        btnEst.classList.remove("active");
+    });
+
+
+
+    /* ===========================
+       MODAL TIPO VEHÍCULO
+    =========================== */
+    const modalTipo = document.getElementById("modalTipoVehiculo");
+    const btnAbrir = document.getElementById("btnAbrirReserva"); // Botón estado vacío
+    const btnAbrirNueva = document.getElementById("btnAbrirReservaNueva");
+    const btnCerrar = document.getElementById("cerrarModal");
+
+    if (btnAbrir) {
+        btnAbrir.addEventListener("click", () => {
+            modalTipo.style.display = "flex";
+        });
+    }
+
+    if (btnAbrirNueva) {
+         btnAbrirNueva.addEventListener("click", () => {
+            modalTipo.style.display = "flex";
+        });
+    }
+
+    btnCerrar.addEventListener("click", () => {
+        modalTipo.style.display = "none";
+    });
+
+    window.addEventListener("click", e => {
+        if (e.target === modalTipo) modalTipo.style.display = "none";
+    });
+
+
+
+    /* ===========================
+       SELECCIÓN DE TIPO
+    =========================== */
+    document.querySelectorAll(".tipo-card").forEach(card => {
+        card.addEventListener("click", () => {
+            document.querySelectorAll(".tipo-card").forEach(c => c.classList.remove("selected"));
+            card.classList.add("selected");
+        });
+    });
+
+
+
+    /* ===========================
+       ACEPTAR TIPO → ABRIR FORMULARIO
+    =========================== */
+    document.querySelector(".btn-aceptar").addEventListener("click", () => {
+        const seleccionado = document.querySelector(".tipo-card.selected");
+        if (!seleccionado) return alert("Seleccione un tipo de vehículo");
+
+        const idTipo = seleccionado.getAttribute("data-id");
+        const nombreTipo = seleccionado.querySelector("span").innerText;
+        const iconoSrc = seleccionado.querySelector("img").src;
+
+        window.tipoSeleccionadoId = idTipo;
+
+        document.getElementById("tipoVehiculoNombre").value = nombreTipo;
+        document.getElementById("iconoVehiculo").src = iconoSrc;
+
+        fetch(`/reservas/placas?tipoVehiculoId=${idTipo}`)
+            .then(res => res.json())
+            .then(data => {
+                const datalist = document.getElementById("vehiculosUsuarioList");
+                datalist.innerHTML = ""; // Limpiar opciones anteriores
+                data.forEach(v => {
+                    const option = document.createElement("option");
+                    option.value = v.placa;
+                    datalist.appendChild(option);
+                });
+            });
+
+        modalTipo.style.display = "none";
+        document.getElementById("modalFormularioReserva").style.display = "flex";
+    });
+
+
+    /* ===========================
+       CERRAR MODAL FORMULARIO
+    =========================== */
+    document.getElementById("cerrarModalReserva").addEventListener("click", () => {
+        document.getElementById("modalFormularioReserva").style.display = "none";
+    });
+
+
+
+    /* ===========================
+       CARGAR ESPACIOS
+    =========================== */
+    document.addEventListener("change", e => {
+    if (e.target.id !== "sectorSelect") return;
+
+    const sectorNombre = e.target.options[e.target.selectedIndex].text;
+    const sectorImgEl = document.getElementById("sectorImgPreview");
+
+    sectorImgEl.src = `/img/${sectorNombre}.png`;
+    sectorImgEl.style.display = 'block';
+    sectorImgEl.style.width = '300px';
+    sectorImgEl.style.height = 'auto';
+    sectorImgEl.style.margin = '0 auto';
+
+    const tipoId = window.tipoSeleccionadoId;
+    const sectorId = e.target.value;
+
+    fetch(`/reservas/espacios?sectorId=${sectorId}&tipoVehiculoId=${tipoId}`)
+        .then(res => res.json())
+        .then(data => {
+            let inner = "";
+            data.forEach(e => {
+                inner += `<div class="espacio ${e.estado}" data-id="${e.id}" onclick="seleccionarEspacio(${e.id}, this)">
+                    ${e.nombre}
+                </div>`;
+            });
+            renderEspaciosWithControls(inner);
+        });
+});
+
+
+
+    /* ===========================
+       SELECCIONAR ESPACIO
+    =========================== */
+    function seleccionarEspacio(id, element) {
+        document.querySelectorAll(".espacio").forEach(e => e.classList.remove("sel"));
+        element.classList.add("sel");
+
+        let hidden = document.getElementById("espacioId");
+        if (!hidden) {
+            hidden = document.createElement("input");
+            hidden.type = "hidden";
+            hidden.name = "espacioId";
+            hidden.id = "espacioId";
+            document.getElementById("formReserva").appendChild(hidden);
+        }
+        hidden.value = id;
+    }
+
+
+
+    /* ===========================
+       SCROLLER + FLECHAS
+    =========================== */
+    function renderEspaciosWithControls(htmlInside) {
+        const container = document.getElementById("espaciosContainer");
+
+        container.innerHTML = `
+            <div class="espacios-wrapper" style="display:flex; align-items:center; gap:5px;">
+
+                <div class="espacio-arrow left" id="arrowLeft"
+                     style="cursor:pointer; padding:8px; border-radius:6px; background:#eee;">
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </div>
+
+                <div class="espacios-scroller" id="espaciosScroller"
+                     style="display:flex; gap:10px; overflow-x:auto; padding:10px; scroll-behavior:smooth;">
+                    ${htmlInside}
+                </div>
+
+                <div class="espacio-arrow right" id="arrowRight"
+                     style="cursor:pointer; padding:8px; border-radius:6px; background:#eee;">
+                    <span class="material-symbols-outlined">chevron_right</span>
+                </div>
+
+            </div>
+        `;
+
+        const scroller = document.getElementById("espaciosScroller");
+
+        document.getElementById("arrowLeft").onclick = () =>
+            scroller.scrollBy({ left: -220, behavior: "smooth" });
+
+        document.getElementById("arrowRight").onclick = () =>
+            scroller.scrollBy({ left: 220, behavior: "smooth" });
+    }
+
+/* ===========================
+   ENVÍO DEL FORMULARIO
+=========================== */
+    document.getElementById("formReserva").addEventListener("submit", function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+
+        fetch('/reservas/guardar', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert("Reserva guardada correctamente");
+                document.getElementById("modalFormularioReserva").style.display = "none";
+
+                const espacioEl = document.querySelector(`.espacio[data-id='${data.espacioId}']`);
+                if (espacioEl) {
+                    espacioEl.classList.remove("libre");
+                    espacioEl.classList.add("ocupado");
+                    espacioEl.onclick = null;
+                }
+                document.querySelector('.status-area .status-box.disponible .count').textContent = data.totales.disponibles;
+                document.querySelector('.status-area .status-box.ocupado .count').textContent = data.totales.ocupados;
+                const sectorBoxes = document.querySelectorAll('.sector-box');
+                sectorBoxes.forEach(box => {
+                    const h4 = box.querySelector('h4');
+                    if (h4 && parseInt(h4.dataset.id) === data.sector.id) {
+                        box.querySelector('.status-box:first-child .count').textContent = data.sector.disponibles;
+                        box.querySelector('.status-box:last-child .count').textContent = data.sector.ocupados;
+                    }
+                });
+                const resBoxes = document.querySelectorAll('#vistaReservaciones .status-box');
+                if (resBoxes.length >= 2) {
+                    resBoxes[0].querySelector('.count').textContent = data.totales.disponibles;
+                    resBoxes[1].querySelector('.count').textContent = data.totales.ocupados;
+                }
+                document.querySelectorAll('.espacio').forEach(e => e.classList.remove('sel'));
+
+                const emptyState = document.getElementById("empty-state-container");
+                if (emptyState) {
+                    emptyState.style.display = "none";
+                }
+
+                const newReserva = data.nuevaReserva;
+
+                const newCardHTML = `
+                    <div class="reserva-activa-card">
+                        <div class="reserva-info">
+                            <div class="reserva-fechas">
+                                <div class="info-item">
+                                    <span class="material-symbols-outlined">calendar_today</span>
+                                    <span>Fecha: <strong>${newReserva.fecha}</strong></span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="material-symbols-outlined">schedule</span>
+                                    <span>Entrada: <strong>${newReserva.entrada}</strong></span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="material-symbols-outlined">schedule</span>
+                                    <span>Salida: <strong>${newReserva.salida}</strong></span>
+                                </div>
+                            </div>
+                            <div class="reserva-lugar">
+                                <h6>Datos de Lugar:</h6>
+                                <p>Sector: <strong>${newReserva.sector}</strong></p>
+                                <p>Lugar: <strong>${newReserva.espacio}</strong></p>
+                                <div class="btn-container">
+                                    <button class="btn-detalles">Detalles</button>
+                                    <button class="btn-cancelar">Cancelar</button>
+                                </div>
+                            </div>
+                            <div class="reserva-acciones">
+                                <span class="status-chip">${newReserva.estado}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                let blueSection = document.getElementById("blue-section-container");
+
+                if (blueSection) {
+                    let activeContainer = blueSection.querySelector("#active-reservation-container");
+                    if (activeContainer) {
+                        activeContainer.innerHTML = newCardHTML;
+                    }
+                } else {
+                    blueSection = document.createElement("div");
+                    blueSection.className = "blue-section";
+                    blueSection.id = "blue-section-container";
+                    blueSection.innerHTML = `
+                        <div class="content-container">
+                            <div id="active-reservation-container">
+                                ${newCardHTML}
+                            </div>
+                        </div>
+                    `;
+                    emptyState.insertAdjacentElement("afterend", blueSection);
+                }
+
+                const btnAbrirEmpty = document.getElementById("btnAbrirReserva");
+                if (btnAbrirEmpty) btnAbrirEmpty.style.display = "none";
+
+                let btnAbrirActive = document.getElementById("btnAbrirReservaNueva");
+                if (btnAbrirActive) {
+                    btnAbrirActive.style.display = "inline-block"; // Mostrarlo
+                } else {
+                    btnAbrirActive = document.createElement("button");
+                    btnAbrirActive.id = "btnAbrirReservaNueva";
+                    btnAbrirActive.className = "btn-reservar-secondary";
+                    btnAbrirActive.textContent = "Reservar";
+                    document.querySelector(".reservar-button-container").appendChild(btnAbrirActive);
+
+                    btnAbrirActive.addEventListener("click", () => {
+                        document.getElementById("modalTipoVehiculo").style.display = "flex";
+                    });
+                }
+
+            } else {
+                alert(data.error === "ocupado" ? "Espacio ya ocupado" : "Error al guardar reserva");
+            }
+        })
+        .catch(err => alert("Error de red: " + err));
+    });
+/* ===========================
+   VEHICULOS USUARIO
+=========================== */
+    const csrfToken = document.querySelector('input[name="_csrf"]').value;
+
+    document.getElementById("btnVehiculos").addEventListener("click", () => {
+        cargarVehiculos();
+        document.getElementById("modalVehiculos").style.display = "flex";
+    });
+
+    document.getElementById("cerrarModalVehiculos").addEventListener("click", () => {
+        document.getElementById("modalVehiculos").style.display = "none";
+    });
+
+    function cargarVehiculos() {
+        fetch('/vehiculos/mios')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById("vehiculosTableBody");
+                tbody.innerHTML = "";
+                data.forEach(v => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td>${v.tipoVehiculoNombre}</td>
+                        <td>${v.placa}</td>
+                        <td style="text-align:center;">
+                            <button onclick="eliminarVehiculo(${v.id})" class="btn-eliminar">Eliminar</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            });
+        }
+
+    document.getElementById("btnAgregarVehiculo").addEventListener("click", () => {
+        const tipoId = document.getElementById("nuevoTipoVehiculo").value;
+        const placa = document.getElementById("nuevaPlaca").value.trim();
+
+        if (!tipoId || !placa) return alert("Complete tipo y placa");
+
+        fetch('/vehiculos/agregar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({ tipoId, placa })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success){
+                cargarVehiculos();
+                document.getElementById("nuevaPlaca").value = "";
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    function eliminarVehiculo(id){
+        if(!confirm("¿Desea eliminar este vehículo?")) return;
+        fetch(`/vehiculos/eliminar/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) cargarVehiculos();
+            else alert(data.error);
+        });
+    }
+
+    window.addEventListener('load', () => {
+        const loader = document.getElementById('loader-container');
+        const content = document.getElementById('main-content');
+
+        loader.style.opacity = '0';
+        loader.style.visibility = 'hidden';
+        content.style.visibility = 'visible';
+        content.style.opacity = '1';
+    });
+
+
+</script>
+</body>
+</html>

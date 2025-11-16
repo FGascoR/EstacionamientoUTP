@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel Administrativo - Reservas</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <meta name="_csrf" th:content="${_csrf.token}" />
+  <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+</head>
+<body>
+
+<form id="logoutForm" th:action="@{/logout}" method="post" style="display:inline;">
+  <input type="hidden" name="_csrf" th:value="${_csrf.token}" />
+  <button type="submit" style="margin-bottom:20px;">Cerrar sesión</button>
+</form>
+
+<h1>Reservas Actuales</h1>
+<table border="1" cellpadding="8">
+  <thead>
+  <tr>
+    <th>ID</th>
+    <th>Usuario</th>
+    <th>Vehículo</th>
+    <th>Placa</th>
+    <th>Sector</th>
+    <th>Espacio</th>
+    <th>Fecha</th>
+    <th>Entrada</th>
+    <th>Salida</th>
+    <th>Acciones</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr th:each="reserva : ${reservas}" th:id="'reserva-' + ${reserva.id}">
+    <td th:text="${reserva.id}"></td>
+    <td th:text="${reserva.usuario.nombre}"></td>
+    <td th:text="${reserva.vehiculo.tipoVehiculo.nombre}"></td>
+    <td th:text="${reserva.vehiculo.placa}"></td>
+    <td th:text="${reserva.sector.nombre}"></td>
+    <td th:text="${reserva.espacio.nombre}"></td>
+    <td th:text="${reserva.fechaReserva}"></td>
+    <td th:text="${reserva.horaEntrada}"></td>
+    <td th:text="${reserva.horaSalida}"></td>
+    <td>
+      <button class="btnEliminar" th:data-id="${reserva.id}">Eliminar</button>
+    </td>
+  </tr>
+  </tbody>
+</table>
+
+<script>
+  $(document).ready(function(){
+      const token = $('meta[name="_csrf"]').attr('content');
+      const header = $('meta[name="_csrf_header"]').attr('content');
+
+      $('.btnEliminar').click(function(){
+          const id = $(this).data('id');
+          if(confirm('¿Desea eliminar esta reserva?')){
+              $.ajax({
+                  url: '/admin/reservas/eliminar/' + id,
+                  type: 'DELETE',
+                  beforeSend: function(xhr){
+                      xhr.setRequestHeader(header, token);
+                  },
+                  success: function(response){
+                      if(response === 'success'){
+                          $('#reserva-' + id).remove();
+                          alert('Reserva eliminada correctamente');
+                      } else {
+                          alert('Error al eliminar la reserva');
+                      }
+                  },
+                  error: function(){
+                      alert('Error de red al eliminar la reserva');
+                  }
+              });
+          }
+      });
+  });
+</script>
+</body>
+</html>
