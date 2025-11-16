@@ -976,3 +976,70 @@ input[type="time"], select, input[type="text"] {
                 stroke-dashoffset: -124;
             }
         }
+
+
+        /* ==================================
+           ESTILOS MODAL DE CONFIRMACIÓN
+        =================================== */
+        .modal-content-confirm {
+            background: #fff;
+            width: 90%;
+            max-width: 380px;
+            padding: 30px 25px;
+            border-radius: 16px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            text-align: center;
+            position: relative;
+            transform: scale(0.9);
+            opacity: 0;
+            transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+        }
+        .modal-overlay[style*="display: flex"] .modal-content-confirm {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        .modal-content-confirm .close-btn {
+            top: 10px;
+            right: 10px;
+            color: #999;
+        }
+        .modal-content-confirm .close-btn:hover {
+            color: #333;
+        }
+
+        .modal-content-confirm img {
+            width: 120px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        .modal-content-confirm h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .modal-content-confirm p {
+            font-size: 15px;
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .modal-content-confirm .btn-aceptar-confirm {
+            background-color: #6a5af9;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .modal-content-confirm .btn-aceptar-confirm:hover {
+            background-color: #58429c;
+        }

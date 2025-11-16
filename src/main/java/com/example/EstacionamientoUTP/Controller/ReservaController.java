@@ -2,18 +2,17 @@ package com.example.EstacionamientoUTP.Controller;
 
 import com.example.EstacionamientoUTP.Entity.*;
 import com.example.EstacionamientoUTP.Repository.*;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.ui.Model;
 import com.example.EstacionamientoUTP.Security.CustomUserDetails;
-
+import com.example.EstacionamientoUTP.Service.EmailService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter; // <-- 1. ESTE IMPORT FALTABA
-
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +27,7 @@ public class ReservaController {
     private final EspacioRepository espacioRepository;
     private final VehiculoRepository vehiculoRepository;
     private final ReservaRepository reservaRepository;
+    private final EmailService emailService;
 
     @GetMapping("/nueva")
     public String nuevaReserva(
@@ -104,6 +104,11 @@ public class ReservaController {
                     .horaSalida(LocalTime.parse(salida))
                     .build();
             reservaRepository.save(reserva);
+
+            new Thread(() -> {
+                emailService.enviarCorreoConfirmacion(usuario, reserva);
+            }).start();
+
 
             resp.put("success", true);
             resp.put("espacioId", espacioId);
