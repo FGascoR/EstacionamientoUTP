@@ -26,6 +26,9 @@ public class Reserva {
     @Column(name = "hora_salida", nullable = false)
     private LocalTime horaSalida;
 
+    @Column(name = "estado")
+    private String estado;
+
     @ManyToOne
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
@@ -37,6 +40,10 @@ public class Reserva {
     @ManyToOne
     @JoinColumn(name = "espacio_id", nullable = false)
     private Espacio espacio;
+
+    @ManyToOne
+    @JoinColumn(name = "sub_espacio_id", nullable = true)
+    private SubEspacio subEspacio;
 
     @ManyToOne
     @JoinColumn(name = "vehiculo_id", nullable = false)

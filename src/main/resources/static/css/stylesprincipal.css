@@ -979,10 +979,13 @@ input[type="time"], select, input[type="text"] {
 
 
         /* ==================================
-           ESTILOS MODAL DE CONFIRMACIÓN
+           ESTILOS MODALES DE CONFIRMACIÓN
         =================================== */
 
-        #modalConfirmacion.modal-overlay {
+        #modalConfirmacion.modal-overlay,
+        #modalPreguntaCancelacion.modal-overlay,
+        #modalCancelacionExito.modal-overlay,
+        #modalErrorCancelacion.modal-overlay {
             display: flex !important;
             justify-content: center;
             align-items: center;
@@ -993,7 +996,10 @@ input[type="time"], select, input[type="text"] {
             transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
         }
 
-        #modalConfirmacion.modal-overlay.show {
+        #modalConfirmacion.modal-overlay.show,
+        #modalPreguntaCancelacion.modal-overlay.show,
+        #modalCancelacionExito.modal-overlay.show,
+        #modalErrorCancelacion.modal-overlay.show {
             visibility: visible;
             opacity: 1;
         }
@@ -1007,12 +1013,13 @@ input[type="time"], select, input[type="text"] {
             box-shadow: 0 5px 20px rgba(0,0,0,0.1);
             text-align: center;
             position: relative;
+
             transform: scale(0.9);
             opacity: 0;
             transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
         }
 
-        #modalConfirmacion.modal-overlay.show .modal-content-confirm {
+        .modal-overlay.show .modal-content-confirm {
             transform: scale(1);
             opacity: 1;
         }
@@ -1025,13 +1032,11 @@ input[type="time"], select, input[type="text"] {
         .modal-content-confirm .close-btn:hover {
             color: #333;
         }
-
         .modal-content-confirm img {
             width: 120px;
             height: auto;
             margin-bottom: 20px;
         }
-
         .modal-content-confirm h2 {
             font-size: 20px;
             font-weight: 600;
@@ -1039,13 +1044,11 @@ input[type="time"], select, input[type="text"] {
             margin-bottom: 10px;
             line-height: 1.4;
         }
-
         .modal-content-confirm p {
             font-size: 15px;
             color: #666;
             margin-bottom: 25px;
         }
-
         .modal-content-confirm .btn-aceptar-confirm {
             background-color: #6a5af9;
             color: white;

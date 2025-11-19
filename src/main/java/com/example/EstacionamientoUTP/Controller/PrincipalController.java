@@ -1,11 +1,7 @@
 package com.example.EstacionamientoUTP.Controller;
 
 import com.example.EstacionamientoUTP.Entity.*;
-import com.example.EstacionamientoUTP.Repository.EspacioRepository;
-import com.example.EstacionamientoUTP.Repository.SectorRepository;
-import com.example.EstacionamientoUTP.Repository.ReservaRepository;
-import com.example.EstacionamientoUTP.Repository.TipoVehiculoRepository;
-import com.example.EstacionamientoUTP.Repository.VehiculoRepository;
+import com.example.EstacionamientoUTP.Repository.*;
 import com.example.EstacionamientoUTP.Security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -13,9 +9,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -23,6 +20,7 @@ public class PrincipalController {
 
     private final SectorRepository sectorRepository;
     private final EspacioRepository espacioRepository;
+    private final SubEspacioRepository subEspacioRepository;
     private final TipoVehiculoRepository tipoVehiculoRepository;
     private final VehiculoRepository vehiculoRepository;
     private final ReservaRepository reservaRepository;
@@ -34,59 +32,60 @@ public class PrincipalController {
         Usuario usuario = userDetails.getUsuarioEntity();
         model.addAttribute("usuario", usuario);
 
-        int totalDisponibles = 0;
-        int totalOcupados = 0;
+        LocalDate hoy = LocalDate.now();
+        LocalTime ahora = LocalTime.now();
 
-        int disponiblesA = 0, ocupadosA = 0;
-        int disponiblesB = 0, ocupadosB = 0;
-        int disponiblesC = 0, ocupadosC = 0;
+        List<Espacio> todosEspacios = espacioRepository.findAll();
+        List<SubEspacio> todosSubEspacios = subEspacioRepository.findAll();
 
-        List<Sector> sectores = sectorRepository.findAll();
+        Set<Long> idsEspaciosConHijos = todosSubEspacios.stream()
+                .map(s -> s.getEspacio().getId())
+                .collect(Collectors.toSet());
 
-        for (Sector s : sectores) {
-            totalDisponibles += s.getEspaciosDisponibles();
-            totalOcupados += s.getEspaciosOcupados();
+        Map<Long, Long> capacidadPorSector = new HashMap<>();
 
-            switch (s.getNombre()) {
-                case "A":
-                    disponiblesA += s.getEspaciosDisponibles();
-                    ocupadosA += s.getEspaciosOcupados();
-                    break;
-                case "B":
-                    disponiblesB += s.getEspaciosDisponibles();
-                    ocupadosB += s.getEspaciosOcupados();
-                    break;
-                case "C":
-                    disponiblesC += s.getEspaciosDisponibles();
-                    ocupadosC += s.getEspaciosOcupados();
-                    break;
+        for (Espacio e : todosEspacios) {
+            if (!idsEspaciosConHijos.contains(e.getId())) {
+                Long sectorId = e.getSector().getId();
+                capacidadPorSector.put(sectorId, capacidadPorSector.getOrDefault(sectorId, 0L) + 1);
             }
         }
 
-        model.addAttribute("disponibles", totalDisponibles);
-        model.addAttribute("ocupados", totalOcupados);
+        for (SubEspacio s : todosSubEspacios) {
+            Long sectorId = s.getEspacio().getSector().getId();
+            capacidadPorSector.put(sectorId, capacidadPorSector.getOrDefault(sectorId, 0L) + 1);
+        }
 
-        model.addAttribute("disponiblesA", disponiblesA);
-        model.addAttribute("ocupadosA", ocupadosA);
-        model.addAttribute("disponiblesB", disponiblesB);
-        model.addAttribute("ocupadosB", ocupadosB);
-        model.addAttribute("disponiblesC", disponiblesC);
-        model.addAttribute("ocupadosC", ocupadosC);
+        List<Reserva> reservasActivasAhora = reservaRepository.findActivasAhora(hoy, ahora);
+
+        Map<Long, Long> ocupadosPorSector = reservasActivasAhora.stream()
+                .collect(Collectors.groupingBy(r -> r.getSector().getId(), Collectors.counting()));
+
+        long totalCapacidadGlobal = capacidadPorSector.values().stream().mapToLong(Long::longValue).sum();
+        long totalOcupadosGlobal = reservasActivasAhora.size();
+        long totalDisponiblesGlobal = Math.max(0, totalCapacidadGlobal - totalOcupadosGlobal);
+
+        model.addAttribute("disponibles", totalDisponiblesGlobal);
+        model.addAttribute("ocupados", totalOcupadosGlobal);
+
+        List<Sector> sectores = sectorRepository.findAll();
+        for (Sector s : sectores) {
+            long capacidad = capacidadPorSector.getOrDefault(s.getId(), 0L);
+            long ocupados = ocupadosPorSector.getOrDefault(s.getId(), 0L);
+            long disponibles = Math.max(0, capacidad - ocupados);
+
+            s.setEspaciosOcupados((int) ocupados);
+            s.setEspaciosDisponibles((int) disponibles);
+        }
 
         model.addAttribute("sectores", sectores);
-        model.addAttribute("espacios", espacioRepository.findAll());
         model.addAttribute("tiposVehiculo", tipoVehiculoRepository.findAll());
-
         List<Vehiculo> vehiculosUsuario = vehiculoRepository.findByUsuarioId(usuario.getId());
         model.addAttribute("vehiculosUsuario", vehiculosUsuario);
 
         List<Reserva> misReservas = reservaRepository.findByUsuarioId(usuario.getId());
+        model.addAttribute("reservaActiva", misReservas.isEmpty() ? null : misReservas.get(0));
 
-        if (!misReservas.isEmpty()) {
-            model.addAttribute("reservaActiva", misReservas.get(0));
-        } else {
-            model.addAttribute("reservaActiva", null);
-        }
         return "Principal";
     }
 
@@ -156,5 +155,4 @@ public class PrincipalController {
             return resp;
         }
     }
-
 }

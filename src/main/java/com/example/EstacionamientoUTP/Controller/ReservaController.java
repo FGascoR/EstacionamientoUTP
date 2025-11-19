@@ -11,11 +11,13 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -25,6 +27,7 @@ public class ReservaController {
     private final TipoVehiculoRepository tipoVehiculoRepository;
     private final SectorRepository sectorRepository;
     private final EspacioRepository espacioRepository;
+    private final SubEspacioRepository subEspacioRepository;
     private final VehiculoRepository vehiculoRepository;
     private final ReservaRepository reservaRepository;
     private final EmailService emailService;
@@ -33,12 +36,9 @@ public class ReservaController {
     public String nuevaReserva(
             @RequestParam("tipoVehiculo") Long idTipoVehiculo,
             Model model) {
-
         TipoVehiculo tipoVehiculo = tipoVehiculoRepository.findById(idTipoVehiculo).orElse(null);
-
         model.addAttribute("tipoSeleccionado", tipoVehiculo);
         model.addAttribute("sectores", sectorRepository.findAll());
-
         return "ReservaForm";
     }
 
@@ -46,9 +46,58 @@ public class ReservaController {
     @ResponseBody
     public List<Espacio> obtenerEspacios(
             @RequestParam("sectorId") Long sectorId,
-            @RequestParam("tipoVehiculoId") Long tipoVehiculoId) {
+            @RequestParam("tipoVehiculoId") Long tipoVehiculoId,
+            @RequestParam("fecha") String fecha,
+            @RequestParam("entrada") String entrada,
+            @RequestParam("salida") String salida) {
 
-        return espacioRepository.findBySector_IdAndTipoVehiculo_Id(sectorId, tipoVehiculoId);
+        LocalDate reqFecha = LocalDate.parse(fecha);
+        LocalTime reqEntrada = LocalTime.parse(entrada);
+        LocalTime reqSalida = LocalTime.parse(salida);
+
+        List<Espacio> allSpaces = espacioRepository.findBySector_IdAndTipoVehiculo_Id(sectorId, tipoVehiculoId);
+        List<Long> spaceIds = allSpaces.stream().map(Espacio::getId).toList();
+
+        List<Reserva> spaceReservations = reservaRepository.findByFechaReservaAndEspacioIdIn(reqFecha, spaceIds);
+        List<Reserva> subSpaceReservations = reservaRepository.findSubSpaceReservationsForDate(reqFecha);
+
+        Map<Long, List<Reserva>> spaceResMap = spaceReservations.stream()
+                .collect(Collectors.groupingBy(r -> r.getEspacio().getId()));
+
+        Map<Long, List<Reserva>> subSpaceResMap = subSpaceReservations.stream()
+                .filter(r -> r.getSubEspacio() != null)
+                .collect(Collectors.groupingBy(r -> r.getSubEspacio().getId()));
+
+        for (Espacio space : allSpaces) {
+            space.setEstado("LIBRE");
+            if (spaceResMap.containsKey(space.getId())) {
+                for (Reserva r : spaceResMap.get(space.getId())) {
+                    if (r.getSubEspacio() == null && isConflict(reqEntrada, reqSalida, r)) {
+                        space.setEstado("OCUPADO");
+                        break;
+                    }
+                }
+            }
+
+            if (space.getSubEspacios() != null && !space.getSubEspacios().isEmpty()) {
+                for (SubEspacio sub : space.getSubEspacios()) {
+                    sub.setEstado("LIBRE");
+                    if (subSpaceResMap.containsKey(sub.getId())) {
+                        for (Reserva r : subSpaceResMap.get(sub.getId())) {
+                            if (isConflict(reqEntrada, reqSalida, r)) {
+                                sub.setEstado("OCUPADO");
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return allSpaces;
+    }
+
+    private boolean isConflict(LocalTime start, LocalTime end, Reserva existing) {
+        return start.isBefore(existing.getHoraSalida()) && end.isAfter(existing.getHoraEntrada());
     }
 
     @PostMapping("/guardar")
@@ -56,6 +105,7 @@ public class ReservaController {
     public Map<String, Object> guardarReserva(
             @RequestParam Long sectorId,
             @RequestParam Long espacioId,
+            @RequestParam(required = false) Long subEspacioId,
             @RequestParam String placa,
             @RequestParam String fecha,
             @RequestParam String entrada,
@@ -71,23 +121,39 @@ public class ReservaController {
                     .orElseThrow(() -> new RuntimeException("Espacio no encontrado"));
             Sector sector = espacio.getSector();
 
-            if (!"LIBRE".equalsIgnoreCase(espacio.getEstado())) {
+            SubEspacio subEspacio = null;
+            if (subEspacioId != null) {
+                subEspacio = subEspacioRepository.findById(subEspacioId)
+                        .orElseThrow(() -> new RuntimeException("SubEspacio no encontrado"));
+            }
+
+            LocalDate fechaRes = LocalDate.parse(fecha);
+            LocalTime horaEnt = LocalTime.parse(entrada);
+            LocalTime horaSal = LocalTime.parse(salida);
+
+            List<Reserva> conflicts;
+            if (subEspacio != null) {
+                conflicts = reservaRepository.findConflictingSubSpaceReservations(subEspacioId, fechaRes, horaEnt, horaSal);
+            } else {
+                conflicts = reservaRepository.findConflictingReservations(espacioId, fechaRes, horaEnt, horaSal);
+            }
+
+            if (!conflicts.isEmpty()) {
                 resp.put("success", false);
                 resp.put("error", "ocupado");
                 return resp;
             }
 
-            espacio.setEstado("OCUPADO");
-            espacioRepository.save(espacio);
+            String placaFinal = placa;
+            if (placa == null || placa.trim().isEmpty()) {
+                placaFinal = "SIN PLACA";
+            }
 
-            sector.setEspaciosDisponibles(sector.getEspaciosDisponibles() - 1);
-            sector.setEspaciosOcupados(sector.getEspaciosOcupados() + 1);
-            sectorRepository.save(sector);
-
-            Vehiculo vehiculo = vehiculoRepository.findByPlaca(placa)
+            String finalPlaca = placaFinal;
+            Vehiculo vehiculo = vehiculoRepository.findByPlaca(finalPlaca)
                     .orElseGet(() -> {
                         Vehiculo nuevo = Vehiculo.builder()
-                                .placa(placa)
+                                .placa(finalPlaca)
                                 .tipoVehiculo(espacio.getTipoVehiculo())
                                 .usuario(usuario)
                                 .build();
@@ -97,40 +163,45 @@ public class ReservaController {
             Reserva reserva = Reserva.builder()
                     .sector(sector)
                     .espacio(espacio)
+                    .subEspacio(subEspacio)
                     .vehiculo(vehiculo)
                     .usuario(usuario)
-                    .fechaReserva(LocalDate.parse(fecha))
-                    .horaEntrada(LocalTime.parse(entrada))
-                    .horaSalida(LocalTime.parse(salida))
+                    .fechaReserva(fechaRes)
+                    .horaEntrada(horaEnt)
+                    .horaSalida(horaSal)
+                    .estado("En Proceso")
                     .build();
             reservaRepository.save(reserva);
 
-            new Thread(() -> {
-                emailService.enviarCorreoConfirmacion(usuario, reserva);
-            }).start();
-
+            new Thread(() -> emailService.enviarCorreoConfirmacion(usuario, reserva)).start();
 
             resp.put("success", true);
             resp.put("espacioId", espacioId);
-            resp.put("sector", Map.of(
-                    "id", sector.getId(),
-                    "disponibles", sector.getEspaciosDisponibles(),
-                    "ocupados", sector.getEspaciosOcupados()
-            ));
-            resp.put("totales", Map.of(
-                    "disponibles", sectorRepository.findAll().stream().mapToInt(Sector::getEspaciosDisponibles).sum(),
-                    "ocupados", sectorRepository.findAll().stream().mapToInt(Sector::getEspaciosOcupados).sum()
-            ));
+
+            LocalDate hoy = LocalDate.now();
+            LocalTime ahora = LocalTime.now();
+            long totalCapacidad = calcularCapacidadTotal();
+            long totalOcupados = reservaRepository.findActivasAhora(hoy, ahora).size();
+            long totalDisponibles = Math.max(0, totalCapacidad - totalOcupados);
+
+            resp.put("totales", Map.of("disponibles", totalDisponibles, "ocupados", totalOcupados));
+            resp.put("sector", Map.of("id", sector.getId(), "disponibles", 0, "ocupados", 0));
 
             DateTimeFormatter dtfFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
             DateTimeFormatter dtfHora = DateTimeFormatter.ofPattern("HH:mm");
 
+            String nombreLugar = espacio.getNombre();
+            if (subEspacio != null) {
+                nombreLugar += " - " + subEspacio.getNombre();
+            }
+
             resp.put("nuevaReserva", Map.of(
+                    "id", reserva.getId(),
                     "fecha", reserva.getFechaReserva().format(dtfFecha),
                     "entrada", reserva.getHoraEntrada().format(dtfHora),
                     "salida", reserva.getHoraSalida().format(dtfHora),
                     "sector", reserva.getSector().getNombre(),
-                    "espacio", reserva.getEspacio().getNombre(),
+                    "espacio", nombreLugar,
                     "estado", "En Proceso"
             ));
 
@@ -139,8 +210,56 @@ public class ReservaController {
             resp.put("success", false);
             resp.put("error", e.getMessage());
         }
-
         return resp;
+    }
+
+    @PostMapping("/cancelar")
+    @ResponseBody
+    public Map<String, Object> cancelarReserva(@RequestParam Long id) {
+        Map<String, Object> resp = new HashMap<>();
+        try {
+            Reserva reserva = reservaRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Reserva no encontrada"));
+
+            LocalDateTime fechaHoraEntrada = LocalDateTime.of(reserva.getFechaReserva(), reserva.getHoraEntrada());
+            LocalDateTime ahora = LocalDateTime.now();
+
+            long minutosParaEntrada = java.time.Duration.between(ahora, fechaHoraEntrada).toMinutes();
+
+            if (minutosParaEntrada < 15) {
+                resp.put("success", false);
+                resp.put("error", "tiempo_limite");
+                return resp;
+            }
+
+            reservaRepository.delete(reserva);
+
+            LocalDate hoy = LocalDate.now();
+            LocalTime horaActual = LocalTime.now();
+            long totalCapacidad = calcularCapacidadTotal();
+            long totalOcupados = reservaRepository.findActivasAhora(hoy, horaActual).size();
+
+            resp.put("success", true);
+            resp.put("totales", Map.of("disponibles", Math.max(0, totalCapacidad - totalOcupados), "ocupados", totalOcupados));
+
+        } catch (Exception e) {
+            resp.put("success", false);
+            resp.put("error", e.getMessage());
+        }
+        return resp;
+    }
+
+    private long calcularCapacidadTotal() {
+        long total = 0;
+        List<Espacio> todos = espacioRepository.findAll();
+        for(Espacio e : todos) {
+            if(e.getSubEspacios() != null && !e.getSubEspacios().isEmpty()) {
+                total += e.getSubEspacios().size();
+            } else {
+                total++;
+            }
+        }
+        return total;
     }
 
     @GetMapping("/placas")
@@ -148,10 +267,8 @@ public class ReservaController {
     public List<Vehiculo> obtenerPlacasPorTipo(
             @RequestParam Long tipoVehiculoId,
             Authentication auth) {
-
         CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
         Usuario usuario = userDetails.getUsuarioEntity();
-
         return vehiculoRepository.findByUsuarioIdAndTipoVehiculoId(usuario.getId(), tipoVehiculoId);
     }
 }

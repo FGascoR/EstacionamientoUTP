@@ -26,6 +26,11 @@ public class EmailService {
             DateTimeFormatter dtfFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
             DateTimeFormatter dtfHora = DateTimeFormatter.ofPattern("HH:mm");
 
+            String detalleEspacio = reserva.getEspacio().getNombre();
+            if (reserva.getSubEspacio() != null) {
+                detalleEspacio += " - " + reserva.getSubEspacio().getNombre();
+            }
+
             String textoCorreo = "¡Hola, " + usuario.getNombre() + "!\n\n" +
                     "Tu reserva de estacionamiento se ha registrado correctamente.\n\n" +
                     "Detalles de la reserva:\n" +
@@ -33,14 +38,12 @@ public class EmailService {
                     "- Hora de Entrada: " + reserva.getHoraEntrada().format(dtfHora) + "\n" +
                     "- Hora de Salida: " + reserva.getHoraSalida().format(dtfHora) + "\n" +
                     "- Sector: " + reserva.getSector().getNombre() + "\n" +
-                    "- Espacio: " + reserva.getEspacio().getNombre() + "\n\n" +
+                    "- Espacio: " + detalleEspacio + "\n\n" +
                     "Ten en cuenta tu hora de llegada y salida.\n" +
                     "¡Te esperamos!";
 
             message.setFrom(fromEmail);
-
             message.setTo(usuario.getCorreo());
-
             message.setSubject("Confirmación de Reserva - Estacionamiento UTP");
             message.setText(textoCorreo);
 

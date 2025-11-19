@@ -1,8 +1,8 @@
 package com.example.EstacionamientoUTP.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
-import java.util.List;
 
 @Entity
 @Table(name = "sub_espacios")
@@ -22,6 +22,8 @@ public class SubEspacio {
 
     @ManyToOne
     @JoinColumn(name = "espacio_id", nullable = false)
+    @JsonIgnore
+    @ToString.Exclude
     private Espacio espacio;
 
     @ManyToOne
