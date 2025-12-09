@@ -54,4 +54,34 @@ public class EmailService {
             System.err.println("Error al enviar el correo: " + e.getMessage());
         }
     }
+
+    public void enviarCorreoCancelacion(Usuario usuario, Reserva reserva) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            DateTimeFormatter dtfFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            DateTimeFormatter dtfHora = DateTimeFormatter.ofPattern("HH:mm");
+
+            String detalleEspacio = reserva.getEspacio().getNombre();
+            if (reserva.getSubEspacio() != null) {
+                detalleEspacio += " - " + reserva.getSubEspacio().getNombre();
+            }
+
+            String textoCorreo = "¡Hola, " + usuario.getNombre() + "!\n\n" +
+                    "Tu reserva ha sido CANCELADA exitosamente.\n\n" +
+                    "Detalles de la reserva eliminada:\n" +
+                    "- Fecha: " + reserva.getFechaReserva().format(dtfFecha) + "\n" +
+                    "- Horario: " + reserva.getHoraEntrada().format(dtfHora) + " - " + reserva.getHoraSalida().format(dtfHora) + "\n" +
+                    "- Ubicación: " + reserva.getSector().getNombre() + " | " + detalleEspacio + "\n\n" +
+                    "El espacio ha sido liberado.";
+
+            message.setFrom(fromEmail);
+            message.setTo(usuario.getCorreo());
+            message.setSubject("Cancelación de Reserva - Estacionamiento UTP");
+            message.setText(textoCorreo);
+
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.err.println("Error al enviar correo cancelación: " + e.getMessage());
+        }
+    }
 }

@@ -117,6 +117,15 @@ public class ReservaController {
             CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
             Usuario usuario = userDetails.getUsuarioEntity();
 
+            LocalDate fechaRes = LocalDate.parse(fecha);
+            long reservasDelDia = reservaRepository.countByUsuarioIdAndFechaReserva(usuario.getId(), fechaRes);
+
+            if (reservasDelDia >= 2) {
+                resp.put("success", false);
+                resp.put("error", "limite_diario");
+                return resp;
+            }
+
             Espacio espacio = espacioRepository.findById(espacioId)
                     .orElseThrow(() -> new RuntimeException("Espacio no encontrado"));
             Sector sector = espacio.getSector();
@@ -127,7 +136,6 @@ public class ReservaController {
                         .orElseThrow(() -> new RuntimeException("SubEspacio no encontrado"));
             }
 
-            LocalDate fechaRes = LocalDate.parse(fecha);
             LocalTime horaEnt = LocalTime.parse(entrada);
             LocalTime horaSal = LocalTime.parse(salida);
 
@@ -195,15 +203,18 @@ public class ReservaController {
                 nombreLugar += " - " + subEspacio.getNombre();
             }
 
-            resp.put("nuevaReserva", Map.of(
-                    "id", reserva.getId(),
-                    "fecha", reserva.getFechaReserva().format(dtfFecha),
-                    "entrada", reserva.getHoraEntrada().format(dtfHora),
-                    "salida", reserva.getHoraSalida().format(dtfHora),
-                    "sector", reserva.getSector().getNombre(),
-                    "espacio", nombreLugar,
-                    "estado", "En Proceso"
-            ));
+            Map<String, Object> nuevaReservaData = new HashMap<>();
+            nuevaReservaData.put("id", reserva.getId());
+            nuevaReservaData.put("fecha", reserva.getFechaReserva().format(dtfFecha));
+            nuevaReservaData.put("entrada", reserva.getHoraEntrada().format(dtfHora));
+            nuevaReservaData.put("salida", reserva.getHoraSalida().format(dtfHora));
+            nuevaReservaData.put("sector", reserva.getSector().getNombre());
+            nuevaReservaData.put("espacio", nombreLugar);
+            nuevaReservaData.put("estado", "En Proceso");
+            nuevaReservaData.put("placa", vehiculo.getPlaca());
+            nuevaReservaData.put("tipo", vehiculo.getTipoVehiculo().getNombre());
+
+            resp.put("nuevaReserva", nuevaReservaData);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -231,6 +242,9 @@ public class ReservaController {
                 resp.put("error", "tiempo_limite");
                 return resp;
             }
+
+            Usuario usuarioReserva = reserva.getUsuario();
+            new Thread(() -> emailService.enviarCorreoCancelacion(usuarioReserva, reserva)).start();
 
             reservaRepository.delete(reserva);
 

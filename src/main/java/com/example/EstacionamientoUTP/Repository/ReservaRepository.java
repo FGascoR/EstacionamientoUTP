@@ -49,4 +49,6 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
             @Param("fecha") LocalDate fecha,
             @Param("horaActual") LocalTime horaActual
     );
+
+    long countByUsuarioIdAndFechaReserva(Long usuarioId, LocalDate fechaReserva);
 }

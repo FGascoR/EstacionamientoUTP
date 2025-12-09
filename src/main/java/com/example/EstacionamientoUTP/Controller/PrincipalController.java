@@ -35,6 +35,7 @@ public class PrincipalController {
         LocalDate hoy = LocalDate.now();
         LocalTime ahora = LocalTime.now();
 
+        // 1. Calcular disponibilidad
         List<Espacio> todosEspacios = espacioRepository.findAll();
         List<SubEspacio> todosSubEspacios = subEspacioRepository.findAll();
 
@@ -57,7 +58,6 @@ public class PrincipalController {
         }
 
         List<Reserva> reservasActivasAhora = reservaRepository.findActivasAhora(hoy, ahora);
-
         Map<Long, Long> ocupadosPorSector = reservasActivasAhora.stream()
                 .collect(Collectors.groupingBy(r -> r.getSector().getId(), Collectors.counting()));
 
@@ -68,6 +68,7 @@ public class PrincipalController {
         model.addAttribute("disponibles", totalDisponiblesGlobal);
         model.addAttribute("ocupados", totalOcupadosGlobal);
 
+        // 2. Datos de sectores
         List<Sector> sectores = sectorRepository.findAll();
         for (Sector s : sectores) {
             long capacidad = capacidadPorSector.getOrDefault(s.getId(), 0L);
@@ -83,17 +84,19 @@ public class PrincipalController {
         List<Vehiculo> vehiculosUsuario = vehiculoRepository.findByUsuarioId(usuario.getId());
         model.addAttribute("vehiculosUsuario", vehiculosUsuario);
 
+        // --- ESTO SOLUCIONA TU ERROR DE PANTALLA ---
         List<Reserva> misReservas = reservaRepository.findByUsuarioId(usuario.getId());
-        model.addAttribute("reservaActiva", misReservas.isEmpty() ? null : misReservas.get(0));
+        model.addAttribute("misReservas", misReservas);
+        // -------------------------------------------
 
         return "Principal";
     }
 
+    // API de Vehículos (se mantiene igual)
     @RestController
     @RequiredArgsConstructor
     @RequestMapping("/vehiculos")
     public class VehiculoController {
-
         private final VehiculoRepository vehiculoRepository;
         private final TipoVehiculoRepository tipoVehiculoRepository;
 
@@ -101,9 +104,7 @@ public class PrincipalController {
         public List<VehiculoDTO> misVehiculos(Authentication auth) {
             CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
             Long usuarioId = userDetails.getUsuarioEntity().getId();
-
-            return vehiculoRepository.findByUsuarioId(usuarioId)
-                    .stream()
+            return vehiculoRepository.findByUsuarioId(usuarioId).stream()
                     .map(v -> new VehiculoDTO(v.getId(), v.getPlaca(), v.getTipoVehiculo().getNombre()))
                     .toList();
         }
@@ -114,44 +115,25 @@ public class PrincipalController {
             try {
                 CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
                 var usuario = userDetails.getUsuarioEntity();
-
                 Long tipoId = Long.parseLong(payload.get("tipoId"));
                 String placa = payload.get("placa");
-
-                var tipoVehiculo = tipoVehiculoRepository.findById(tipoId)
-                        .orElseThrow(() -> new RuntimeException("Tipo de vehículo no encontrado"));
+                var tipoVehiculo = tipoVehiculoRepository.findById(tipoId).orElseThrow();
 
                 if(vehiculoRepository.findByPlaca(placa).isPresent()){
-                    resp.put("success", false);
-                    resp.put("error", "Placa ya existe");
-                    return resp;
+                    resp.put("success", false); resp.put("error", "Placa ya existe"); return resp;
                 }
-
-                Vehiculo nuevo = Vehiculo.builder()
-                        .placa(placa)
-                        .tipoVehiculo(tipoVehiculo)
-                        .usuario(usuario)
-                        .build();
+                Vehiculo nuevo = Vehiculo.builder().placa(placa).tipoVehiculo(tipoVehiculo).usuario(usuario).build();
                 vehiculoRepository.save(nuevo);
-
                 resp.put("success", true);
-            } catch(Exception e){
-                resp.put("success", false);
-                resp.put("error", e.getMessage());
-            }
+            } catch(Exception e){ resp.put("success", false); resp.put("error", e.getMessage()); }
             return resp;
         }
 
         @DeleteMapping("/eliminar/{id}")
         public Map<String, Object> eliminarVehiculo(@PathVariable Long id) {
             Map<String, Object> resp = new HashMap<>();
-            try{
-                vehiculoRepository.deleteById(id);
-                resp.put("success", true);
-            } catch(Exception e){
-                resp.put("success", false);
-                resp.put("error", e.getMessage());
-            }
+            try{ vehiculoRepository.deleteById(id); resp.put("success", true); }
+            catch(Exception e){ resp.put("success", false); resp.put("error", e.getMessage()); }
             return resp;
         }
     }

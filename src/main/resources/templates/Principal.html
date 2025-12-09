@@ -141,44 +141,51 @@
         </div>
         <hr style="margin-bottom: 10px;">
 
-        <div th:if="${reservaActiva == null}" id="empty-state-container" style="text-align:center; padding: 2rem 0;">
+        <div class="reservar-button-container" style="text-align:right; margin-bottom: 15px;">
+            <button id="btnAbrirReserva" class="btn-reservar-secondary" onclick="document.getElementById('modalTipoVehiculo').style.display='flex'">+ Nueva Reserva</button>
+        </div>
+
+        <div th:if="${misReservas.empty}" id="empty-state-container" style="text-align:center; padding: 2rem 0;">
             <img th:src="@{/img/SinReserva.png}" alt="Auto" style="width:160px; opacity:0.85; margin-bottom: 1rem;">
             <p style="margin-top:20px; font-size:16px; color:#666;">Aún no tienes ninguna reserva</p>
         </div>
 
-        <div th:if="${reservaActiva != null}" class="blue-section" id="blue-section-container">
-            <div class="content-container">
-                <div id="active-reservation-container">
-                    <div class="reserva-activa-card">
-                        <div class="reserva-info">
-                            <div class="reserva-fechas">
-                                <div class="info-item"><span class="material-symbols-outlined">calendar_today</span><span>Fecha: <strong th:text="${#temporals.format(reservaActiva.fechaReserva, 'dd/MM/yyyy')}"></strong></span></div>
-                                <div class="info-item"><span class="material-symbols-outlined">schedule</span><span>Entrada: <strong th:text="${#temporals.format(reservaActiva.horaEntrada, 'HH:mm')}"></strong></span></div>
-                                <div class="info-item"><span class="material-symbols-outlined">schedule</span><span>Salida: <strong th:text="${#temporals.format(reservaActiva.horaSalida, 'HH:mm')}"></strong></span></div>
+        <div th:if="${!misReservas.empty}" class="blue-section" id="blue-section-container" style="background-color: #D5E5F0; padding: 3rem 60px;">
+            <div class="content-container" id="listaReservasContainer" style="display: flex; flex-direction: column; gap: 20px;">
+
+                <div th:each="reserva : ${misReservas}" th:id="'card-reserva-' + ${reserva.id}" class="reserva-activa-card">
+                    <div class="reserva-info">
+                        <div class="reserva-fechas">
+                            <div class="info-item"><span class="material-symbols-outlined">calendar_today</span><span>Fecha: <strong th:text="${#temporals.format(reserva.fechaReserva, 'dd/MM/yyyy')}"></strong></span></div>
+                            <div class="info-item"><span class="material-symbols-outlined">schedule</span><span>Entrada: <strong th:text="${#temporals.format(reserva.horaEntrada, 'HH:mm')}"></strong></span></div>
+                            <div class="info-item"><span class="material-symbols-outlined">schedule</span><span>Salida: <strong th:text="${#temporals.format(reserva.horaSalida, 'HH:mm')}"></strong></span></div>
+                        </div>
+                        <div class="reserva-lugar">
+                            <h6>Datos de Lugar:</h6>
+                            <p>Sector: <strong th:text="${reserva.sector.nombre}"></strong></p>
+                            <p>Lugar: <strong th:text="${reserva.espacio.nombre} + (${reserva.subEspacio != null} ? ' - ' + ${reserva.subEspacio.nombre} : '')"></strong></p>
+
+                            <div class="btn-container">
+                                <button class="btn-detalles"
+                                        th:data-id="${reserva.id}"
+                                        th:data-fecha="${#temporals.format(reserva.fechaReserva, 'dd/MM/yyyy')}"
+                                        th:data-hora="${#temporals.format(reserva.horaEntrada, 'HH:mm') + ' - ' + #temporals.format(reserva.horaSalida, 'HH:mm')}"
+                                        th:data-sector="${reserva.sector.nombre}"
+                                        th:data-espacio="${reserva.espacio.nombre} + (${reserva.subEspacio != null} ? ' - ' + ${reserva.subEspacio.nombre} : '')"
+                                        th:data-placa="${reserva.vehiculo.placa}"
+                                        th:data-tipo="${reserva.vehiculo.tipoVehiculo.nombre}"
+                                        th:data-estado="${reserva.estado}"
+                                        onclick="verDetalles(this)">Detalles</button>
+
+                                <button class="btn-cancelar" th:onclick="'solicitarCancelacion(' + ${reserva.id} + ')'">Cancelar</button>
                             </div>
-                            <div class="reserva-lugar">
-                                <h6>Datos de Lugar:</h6>
-                                <p>Sector: <strong th:text="${reservaActiva.sector.nombre}"></strong></p>
-                                <p>Lugar: <strong th:text="${reservaActiva.espacio.nombre}"></strong>
-                                    <span th:if="${reservaActiva.subEspacio != null}" th:text="' - ' + ${reservaActiva.subEspacio.nombre}"></span>
-                                </p>
-                                <div class="btn-container">
-                                    <button class="btn-detalles">Detalles</button>
-                                    <button class="btn-cancelar" th:onclick="'solicitarCancelacion(' + ${reservaActiva.id} + ')'">Cancelar</button>
-                                </div>
-                            </div>
-                            <div class="reserva-acciones">
-                                <span class="status-chip">En Proceso</span>
-                            </div>
+                        </div>
+                        <div class="reserva-acciones">
+                            <span class="status-chip" th:text="${reserva.estado}"></span>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div class="reservar-button-container" style="text-align:center; margin-top: 30px;">
-            <button th:if="${reservaActiva == null}" id="btnAbrirReserva" class="btn-reservar-secondary">Reservar</button>
-            <button th:if="${reservaActiva != null}" id="btnAbrirReservaNueva" class="btn-reservar-secondary">Reservar</button>
         </div>
     </section>
 </main>
@@ -242,13 +249,40 @@
     </div>
 </div>
 
+<div id="modalLimiteAlcanzado" class="modal-overlay" style="display:none;">
+    <div class="modal-content-confirm">
+        <span onclick="document.getElementById('modalLimiteAlcanzado').classList.remove('show')" class="material-symbols-outlined close-btn">close</span>
+        <span class="material-symbols-outlined" style="font-size: 80px; color: #ff6b6b; margin-bottom: 15px;">block</span>
+        <h2 style="color: #d32f2f;">No puedes realizar otra reserva</h2>
+        <p>Has alcanzado el límite permitido de reservas activas por día.</p>
+        <button onclick="document.getElementById('modalLimiteAlcanzado').classList.remove('show')" class="btn-aceptar-confirm">Entendido</button>
+    </div>
+</div>
+
+<div id="modalDetalleReserva" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="max-width: 400px;">
+        <span onclick="document.getElementById('modalDetalleReserva').style.display='none'" class="material-symbols-outlined close-btn">close</span>
+        <h2 class="titulo-modal">Detalles de Reserva</h2>
+        <div style="margin-top: 15px; font-size: 15px; line-height: 1.6; color: #444;">
+            <p><strong>Código:</strong> <span id="detId"></span></p>
+            <p><strong>Fecha:</strong> <span id="detFecha"></span></p>
+            <p><strong>Horario:</strong> <span id="detHora"></span></p>
+            <p><strong>Sector:</strong> <span id="detSector"></span></p>
+            <p><strong>Espacio:</strong> <span id="detEspacio"></span></p>
+            <p><strong>Placa:</strong> <span id="detPlaca"></span></p>
+            <p><strong>Vehículo:</strong> <span id="detTipo"></span></p>
+            <p><strong>Estado:</strong> <span class="status-chip" id="detEstado"></span></p>
+        </div>
+        <button onclick="document.getElementById('modalDetalleReserva').style.display='none'" class="btn-aceptar" style="width:100%; margin-top:20px;">Cerrar</button>
+    </div>
+</div>
+
 <div id="modalPreguntaCancelacion" class="modal-overlay" style="display:none;">
     <div class="modal-content-confirm">
         <span id="cerrarModalPregunta" class="material-symbols-outlined close-btn">close</span>
         <img th:src="@{/img/reserva-confirmada.png}" alt="Cancelar" style="width: 120px;">
         <h2>¿Estás seguro de cancelar la reserva?</h2>
         <p>Esta acción liberará tu espacio.</p>
-
         <div style="display: flex; gap: 10px; justify-content: center;">
             <button id="btnVolverCancelacion" class="btn-aceptar-confirm" style="background-color: #f2eefd; color: #6a5af9;">Volver</button>
             <button id="btnConfirmarCancelacion" class="btn-aceptar-confirm">Sí, Cancelar</button>
@@ -278,9 +312,7 @@
 
 
 <script>
-    /* ===========================
-       LOGICA GENERAL (MENÚ, VISTAS, TIPO) - SIN CAMBIOS IMPORTANTES
-    =========================== */
+    /* LOGICA GENERAL */
     const toggle = document.querySelector('.user-toggle');
     const dropdown = document.getElementById('userDropdown');
     const overlay = document.getElementById('menuOverlay');
@@ -293,17 +325,14 @@
     btnEst.addEventListener("click",()=>{vistaEst.style.display="block";vistaRes.style.display="none";btnEst.classList.add("active");btnRes.classList.remove("active");});
     btnRes.addEventListener("click",()=>{vistaEst.style.display="none";vistaRes.style.display="block";btnRes.classList.add("active");btnEst.classList.remove("active");});
 
-    const modalTipo=document.getElementById("modalTipoVehiculo"),btnAbrir=document.getElementById("btnAbrirReserva"),btnAbrirNueva=document.getElementById("btnAbrirReservaNueva"),btnCerrar=document.getElementById("cerrarModal");
+    const modalTipo=document.getElementById("modalTipoVehiculo"),btnAbrir=document.getElementById("btnAbrirReserva"),btnCerrar=document.getElementById("cerrarModal");
     if(btnAbrir)btnAbrir.onclick=()=>modalTipo.style.display="flex";
-    if(btnAbrirNueva)btnAbrirNueva.onclick=()=>modalTipo.style.display="flex";
     btnCerrar.onclick=()=>modalTipo.style.display="none";
     window.addEventListener("click",e=>{if(e.target===modalTipo)modalTipo.style.display="none"});
 
     document.querySelectorAll(".tipo-card").forEach(c=>{c.onclick=()=>{document.querySelectorAll(".tipo-card").forEach(cc=>cc.classList.remove("selected"));c.classList.add("selected");}});
 
-    /* ===========================
-       ACEPTAR TIPO
-    =========================== */
+    /* ACEPTAR TIPO */
     document.querySelector(".btn-aceptar").onclick=()=>{
         const sel=document.querySelector(".tipo-card.selected");
         if(!sel)return alert("Seleccione tipo");
@@ -326,9 +355,7 @@
     };
     document.getElementById("cerrarModalReserva").onclick=()=>document.getElementById("modalFormularioReserva").style.display="none";
 
-    /* ===========================
-       CARGA DE ESPACIOS (AJAX)
-    =========================== */
+    /* ESPACIOS AJAX */
     const formRes=document.getElementById("formReserva");
     formRes.querySelector('input[name="fecha"]').onchange=fetchEspacios;
     formRes.querySelector('input[name="entrada"]').onchange=fetchEspacios;
@@ -376,9 +403,7 @@
         ar.onclick = () => sc.scrollBy({ left: 220, behavior: "smooth" });
     }
 
-    /* ===========================
-       MODAL SUB-ESPACIOS (BICICLETAS)
-    =========================== */
+    /* SUB-ESPACIOS */
     const mSub=document.getElementById("modalSubEspacios");
     let tSub=null, tPadre=null;
 
@@ -408,9 +433,7 @@
     };
     document.getElementById("cerrarModalSub").onclick=()=>mSub.style.display="none";
 
-    /* ===========================
-       GUARDAR RESERVA
-    =========================== */
+    /* LOGICA GUARDAR RESERVA (ACTUALIZADA) */
     formRes.addEventListener("submit",e=>{
         e.preventDefault();
         if(!document.getElementById("espacioId")||!document.getElementById("espacioId").value) return alert("Seleccione espacio");
@@ -419,17 +442,91 @@
                 document.getElementById("modalConfirmacion").classList.add("show");
                 document.getElementById("modalFormularioReserva").style.display="none";
                 updateCounters(d.totales);
-                showActiveReservation(d.nuevaReserva);
+                appendNewReservation(d.nuevaReserva); // Agregar tarjeta
             } else {
-                if(d.error==="ocupado"){ alert("Espacio ocupado en ese horario"); fetchEspacios(); }
-                else alert("Error: "+d.error);
+                if(d.error==="ocupado"){
+                    alert("Espacio ocupado en ese horario"); fetchEspacios();
+                } else if(d.error === "limite_diario") {
+                    // Mostrar NUEVO MODAL DE LIMITE
+                    document.getElementById("modalLimiteAlcanzado").classList.add("show");
+                } else {
+                    alert("Error: "+d.error);
+                }
             }
         }).catch(e=>alert("Error red"));
     });
 
-    /* ===========================
-       CANCELAR RESERVA (CON NUEVOS MODALES)
-    =========================== */
+    // Función para crear la tarjeta HTML dinámica igual a la de Thymeleaf
+    function appendNewReservation(newReserva){
+        const emptyState = document.getElementById("empty-state-container");
+        if (emptyState) emptyState.style.display = "none";
+
+        let listContainer = document.getElementById("listaReservasContainer");
+        // Si no existía el contenedor (primera reserva), lo creamos
+        if (!listContainer) {
+            const blueSec = document.createElement("div");
+            blueSec.className = "blue-section";
+            blueSec.id = "blue-section-container";
+            blueSec.style.cssText = "background-color: #D5E5F0; padding: 3rem 60px;";
+
+            listContainer = document.createElement("div");
+            listContainer.className = "content-container";
+            listContainer.id = "listaReservasContainer";
+            listContainer.style.cssText = "display: flex; flex-direction: column; gap: 20px;";
+
+            blueSec.appendChild(listContainer);
+            document.querySelector("#vistaReservaciones hr").insertAdjacentElement('afterend', blueSec);
+        }
+
+        const newCardHTML = `
+            <div id="card-reserva-${newReserva.id}" class="reserva-activa-card">
+                <div class="reserva-info">
+                    <div class="reserva-fechas">
+                        <div class="info-item"><span class="material-symbols-outlined">calendar_today</span><span>Fecha: <strong>${newReserva.fecha}</strong></span></div>
+                        <div class="info-item"><span class="material-symbols-outlined">schedule</span><span>Entrada: <strong>${newReserva.entrada}</strong></span></div>
+                        <div class="info-item"><span class="material-symbols-outlined">schedule</span><span>Salida: <strong>${newReserva.salida}</strong></span></div>
+                    </div>
+                    <div class="reserva-lugar">
+                        <h6>Datos de Lugar:</h6>
+                        <p>Sector: <strong>${newReserva.sector}</strong></p>
+                        <p>Lugar: <strong>${newReserva.espacio}</strong></p>
+                        <div class="btn-container">
+                            <button class="btn-detalles"
+                               data-id="${newReserva.id}"
+                               data-fecha="${newReserva.fecha}"
+                               data-hora="${newReserva.entrada} - ${newReserva.salida}"
+                               data-sector="${newReserva.sector}"
+                               data-espacio="${newReserva.espacio}"
+                               data-placa="Cargando..."
+                               data-tipo="Vehículo"
+                               data-estado="${newReserva.estado}"
+                               onclick="verDetalles(this)">Detalles</button>
+                            <button class="btn-cancelar" onclick="solicitarCancelacion(${newReserva.id})">Cancelar</button>
+                        </div>
+                    </div>
+                    <div class="reserva-acciones">
+                        <span class="status-chip">${newReserva.estado}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        listContainer.insertAdjacentHTML('beforeend', newCardHTML);
+    }
+
+    /* VER DETALLES */
+    function verDetalles(btn) {
+        document.getElementById("detId").innerText = btn.getAttribute("data-id");
+        document.getElementById("detFecha").innerText = btn.getAttribute("data-fecha");
+        document.getElementById("detHora").innerText = btn.getAttribute("data-hora");
+        document.getElementById("detSector").innerText = btn.getAttribute("data-sector");
+        document.getElementById("detEspacio").innerText = btn.getAttribute("data-espacio");
+        document.getElementById("detPlaca").innerText = btn.getAttribute("data-placa") || 'N/A';
+        document.getElementById("detTipo").innerText = btn.getAttribute("data-tipo") || 'N/A';
+        document.getElementById("detEstado").innerText = btn.getAttribute("data-estado");
+        document.getElementById("modalDetalleReserva").style.display = "flex";
+    }
+
+    /* CANCELAR */
     const csrfToken = document.querySelector('input[name="_csrf"]').value;
     let idReservaPendiente = null;
 
@@ -437,12 +534,10 @@
         idReservaPendiente = id;
         document.getElementById("modalPreguntaCancelacion").classList.add("show");
     }
-
     window.solicitarCancelacion = solicitarCancelacion;
 
     document.getElementById("btnConfirmarCancelacion").onclick = () => {
         if(!idReservaPendiente) return;
-
         document.getElementById("modalPreguntaCancelacion").classList.remove("show");
 
         fetch('/reservas/cancelar', {
@@ -453,19 +548,18 @@
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                const blueSection = document.getElementById("blue-section-container");
-                if(blueSection) blueSection.remove();
+                // Eliminar solo la tarjeta
+                const card = document.getElementById("card-reserva-" + idReservaPendiente);
+                if(card) card.remove();
 
-                const emptyState = document.getElementById("empty-state-container");
-                if(emptyState) emptyState.style.display = "block";
-
-                const btnEmpty = document.getElementById("btnAbrirReserva");
-                const btnActive = document.getElementById("btnAbrirReservaNueva");
-                if(btnEmpty) btnEmpty.style.display = "inline-block";
-                if(btnActive) btnActive.style.display = "none";
+                const container = document.getElementById("listaReservasContainer");
+                // Si no quedan tarjetas, mostrar estado vacío
+                if(container && container.children.length === 0) {
+                     const emptyState = document.getElementById("empty-state-container");
+                     if(emptyState) emptyState.style.display = "block";
+                }
 
                 if(data.totales) updateCounters(data.totales);
-
                 document.getElementById("modalCancelacionExito").classList.add("show");
             } else {
                 if (data.error === 'tiempo_limite') {
@@ -483,10 +577,7 @@
         idReservaPendiente = null;
     };
 
-
-    /* ===========================
-       HELPERS UI
-    =========================== */
+    /* HELPERS */
     function updateCounters(totales){
         if(!totales) return;
         document.querySelector('.status-area .status-box.disponible .count').textContent = totales.disponibles;
@@ -498,65 +589,7 @@
         }
     }
 
-    function showActiveReservation(newReserva){
-        const emptyState = document.getElementById("empty-state-container");
-        if (emptyState) emptyState.style.display = "none";
-
-        const newCardHTML = `
-            <div class="reserva-activa-card">
-                <div class="reserva-info">
-                    <div class="reserva-fechas">
-                        <div class="info-item"><span class="material-symbols-outlined">calendar_today</span><span>Fecha: <strong>${newReserva.fecha}</strong></span></div>
-                        <div class="info-item"><span class="material-symbols-outlined">schedule</span><span>Entrada: <strong>${newReserva.entrada}</strong></span></div>
-                        <div class="info-item"><span class="material-symbols-outlined">schedule</span><span>Salida: <strong>${newReserva.salida}</strong></span></div>
-                    </div>
-                    <div class="reserva-lugar">
-                        <h6>Datos de Lugar:</h6>
-                        <p>Sector: <strong>${newReserva.sector}</strong></p>
-                        <p>Lugar: <strong>${newReserva.espacio}</strong></p>
-                        <div class="btn-container">
-                            <button class="btn-detalles">Detalles</button>
-
-                            <button class="btn-cancelar" onclick="solicitarCancelacion(${newReserva.id})">Cancelar</button>
-
-                        </div>
-                    </div>
-                    <div class="reserva-acciones">
-                        <span class="status-chip">${newReserva.estado}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        let blueSection = document.getElementById("blue-section-container");
-        if (!blueSection) {
-            blueSection = document.createElement("div");
-            blueSection.className = "blue-section";
-            blueSection.id = "blue-section-container";
-            blueSection.innerHTML = `<div class="content-container"><div id="active-reservation-container"></div></div>`;
-            if(emptyState) emptyState.insertAdjacentElement("afterend", blueSection);
-        }
-        blueSection.querySelector("#active-reservation-container").innerHTML = newCardHTML;
-
-        const btnEmpty = document.getElementById("btnAbrirReserva");
-        const btnActive = document.getElementById("btnAbrirReservaNueva");
-        if(btnEmpty) btnEmpty.style.display = "none";
-
-        if(!btnActive) {
-            const newBtn = document.createElement("button");
-            newBtn.id = "btnAbrirReservaNueva";
-            newBtn.className = "btn-reservar-secondary";
-            newBtn.textContent = "Reservar";
-            newBtn.onclick = () => modalTipo.style.display = "flex";
-            document.querySelector(".reservar-button-container").appendChild(newBtn);
-        } else {
-            btnActive.style.display = "inline-block";
-        }
-    }
-
-    /* ===========================
-       VEHICULOS Y OTROS
-    =========================== */
+    /* VEHICULOS Y OTROS (Sin cambios) */
     document.getElementById("btnVehiculos").onclick=()=>{
         fetch('/vehiculos/mios').then(r=>r.json()).then(d=>{
             const tb=document.getElementById("vehiculosTableBody"); tb.innerHTML="";
@@ -577,16 +610,12 @@
     };
     function eliminarVehiculo(id){ if(confirm("Eliminar?")) fetch(`/vehiculos/eliminar/${id}`,{method:'DELETE',headers:{'X-CSRF-TOKEN':csrfToken}}).then(r=>r.json()).then(d=>{if(d.success)document.getElementById("btnVehiculos").click()}); }
 
-    /* ===========================
-       LOADER Y CIERRE DE MODALES
-    =========================== */
     window.onload=()=>{
         const l=document.getElementById('loader-container'), c=document.getElementById('main-content');
         setTimeout(()=>{if(l){l.style.opacity='0';l.style.visibility='hidden'}if(c){c.style.visibility='visible';c.style.opacity='1'}setTimeout(()=>{if(l)l.style.display='none'},500)},200);
     };
 
     const clsM=(m)=>m.classList.remove("show");
-
     const mConf = document.getElementById("modalConfirmacion");
     if(document.getElementById("cerrarModalConfirmacion")) document.getElementById("cerrarModalConfirmacion").onclick=()=>clsM(mConf);
     if(document.getElementById("btnAceptarConfirmacion")) document.getElementById("btnAceptarConfirmacion").onclick=()=>clsM(mConf);
@@ -601,14 +630,16 @@
 
     window.onclick = e => {
         if(e.target === mConf) clsM(mConf);
-        if(e.target === mCanc) clsM(mCanc);
+        if(e.target === mCancEx) clsM(mCancEx);
         if(e.target === document.getElementById("modalPreguntaCancelacion"))
             document.getElementById("modalPreguntaCancelacion").classList.remove("show");
         if(e.target === document.getElementById("modalErrorCancelacion"))
             document.getElementById("modalErrorCancelacion").classList.remove("show");
+        // Cerrar modal de límite si se hace click fuera
+        if(e.target === document.getElementById("modalLimiteAlcanzado"))
+            document.getElementById("modalLimiteAlcanzado").classList.remove("show");
         if(e.target === modalTipo) modalTipo.style.display="none";
     };
-
 </script>
 
 </body>
